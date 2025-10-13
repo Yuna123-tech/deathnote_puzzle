@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도덕 퍼즐 & 데스노트 뒷면</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .container {
+            max-width: 960px;
+        }
+        /* 인쇄 시에만 적용되는 스타일 */
+        @media print {
+            body {
+                background-color: white;
+            }
+            .no-print {
+                display: none;
+            }
+            #app {
+                display: none;
+            }
+            #print-area {
+                display: block !important;
+                width: 29.7cm; /* A4 가로 너비 */
+                height: 21cm; /* A4 가로 높이 */
+                margin: 0 auto;
+                position: relative;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            #moralCanvas.print-canvas, #deathNoteCanvas.print-canvas {
+                display: block !important;
+                max-width: 100%;
+                max-height: 100%;
+                page-break-after: always; /* 각 캔버스 뒤에 페이지 나누기 */
+            }
+
+            @page {
+                size: a4 landscape;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- 메인 애플리케이션 컨테이너 -->
+    <div id="app" class="container mx-auto bg-white p-8 rounded-3xl shadow-2xl space-y-8">
+        <h1 class="text-4xl font-bold text-center text-blue-700">도덕 퍼즐 & 데스노트 뒷면</h1>
+        <p class="text-center text-gray-600">앞면에는 도덕 관련 글귀를, 뒷면에는 데스노트 문구를 넣어 퍼즐을 만들어 보세요.</p>
+
+        <!-- 제어 패널 -->
+        <div class="no-print bg-gray-50 p-6 rounded-2xl shadow-inner space-y-4">
+            <div>
+                <label for="puzzleText" class="block text-sm font-medium text-gray-700">퍼즐 앞면 문구 (도덕 관련):</label>
+                <textarea id="puzzleText" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2">친구를 배려하고 존중하는 마음은 진정한 행복으로 가는 길입니다. 우리 모두 서로 돕고 이해하며 아름다운 교실을 만들어가요.</textarea>
+            </div>
+            <div>
+                <label for="deathNoteText" class="block text-sm font-medium text-gray-700">퍼즐 뒷면 문구 (데스노트 문구):</label>
+                <textarea id="deathNoteText" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2">이 노트에 이름이 적힌 인간은 죽는다. 이 노트는 사신계의 노트이므로, 인간계의 도구에 묶이지 않는다.</textarea>
+            </div>
+            <div>
+                <label for="pieceCount" class="block text-sm font-medium text-gray-700">조각 수 (최소 4, 최대 64):</label>
+                <input type="number" id="pieceCount" value="28" min="4" max="64" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2">
+            </div>
+            <div class="flex justify-center space-x-4">
+                <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">퍼즐 생성 및 미리보기</button>
+                <button id="printBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">인쇄하기 (앞/뒷면)</button>
+            </div>
+        </div>
+        
+        <!-- 완성된 퍼즐 미리보기 (앞면) -->
+        <div id="moralPuzzleContainer" class="mt-8 border-t pt-8">
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">퍼즐 앞면 미리보기 (도덕 글귀)</h2>
+            <div class="flex justify-center">
+                <img id="moralPuzzleImage" src="" alt="도덕 퍼즐 그림" class="rounded-lg shadow-xl" style="display: none;">
+            </div>
+        </div>
+
+        <!-- 완성된 퍼즐 미리보기 (뒷면) -->
+        <div id="deathNoteContainer" class="mt-8 border-t pt-8">
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">퍼즐 뒷면 미리보기 (데스노트 문구)</h2>
+            <div class="flex justify-center">
+                <img id="deathNoteImage" src="" alt="데스노트 그림" class="rounded-lg shadow-xl" style="display: none;">
+            </div>
+        </div>
+
+        <!-- 이미지 생성을 위한 숨겨진 캔버스 -->
+        <canvas id="moralCanvas" class="hidden"></canvas>
+        <canvas id="deathNoteCanvas" class="hidden"></canvas>
+    </div>
+
+    <!-- 인쇄 전용 영역 -->
+    <div id="print-area" class="hidden"></div>
+
+    <script>
+        window.onload = function() {
+            const generateBtn = document.getElementById('generateBtn');
+            const printBtn = document.getElementById('printBtn');
+            const puzzleTextEl = document.getElementById('puzzleText');
+            const deathNoteTextEl = document.getElementById('deathNoteText');
+            const pieceCountEl = document.getElementById('pieceCount');
+            const moralPuzzleImageEl = document.getElementById('moralPuzzleImage');
+            const deathNoteImageEl = document.getElementById('deathNoteImage');
+            const moralCanvas = document.getElementById('moralCanvas');
+            const deathNoteCanvas = document.getElementById('deathNoteCanvas');
+            const moralCtx = moralCanvas.getContext('2d');
+            const deathNoteCtx = deathNoteCanvas.getContext('2d');
+            const printArea = document.getElementById('print-area');
+            
+            // 커스텀 모달 창을 띄우는 함수
+            function showModal(message) {
+                const modalHtml = `
+                    <div id="customModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                        <div class="bg-white p-8 rounded-lg shadow-xl max-w-sm mx-auto">
+                            <h3 class="text-lg font-bold mb-4">알림</h3>
+                            <p class="text-gray-700 mb-6">${message}</p>
+                            <div class="flex justify-end">
+                                <button onclick="document.getElementById('customModal').remove()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full">확인</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            }
+
+            // 텍스트를 캔버스에 그리는 공통 함수
+            function drawPuzzleContent(canvas, ctx, text, pieceCount, isDeathNote = false) {
+                const aspect_ratio = 297 / 210; // A4 가로 비율
+                const canvasHeight = 1000;
+                const canvasWidth = canvasHeight * aspect_ratio;
+                
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+
+                // 배경 그리기
+                if (isDeathNote) {
+                    ctx.fillStyle = '#333333'; // 데스노트 배경색 (어두운 회색)
+                } else {
+                    ctx.fillStyle = '#4a90e2'; // 도덕 퍼즐 배경색 (파란색)
+                }
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                // 텍스트 줄바꿈 및 폰트 크기 계산
+                let fontSize = 100; // 초기 폰트 크기 조정
+                let textLines = [];
+                const maxLineWidth = canvasWidth * 0.9; // 캔버스 너비의 90% 사용
+                const words = text.split(' '); // 공백으로 단어 분리
+                
+                // 줄바꿈 처리 및 폰트 크기 동적 조절
+                function getLines(currentFontSize) {
+                    ctx.font = `${currentFontSize}px Jua, sans-serif`;
+                    let lines = [];
+                    let currentLine = '';
+
+                    for (let i = 0; i < words.length; i++) {
+                        let testLine = currentLine + words[i] + ' ';
+                        if (ctx.measureText(testLine).width > maxLineWidth && currentLine.length > 0) {
+                            lines.push(currentLine.trim());
+                            currentLine = words[i] + ' ';
+                        } else {
+                            currentLine = testLine;
+                        }
+                    }
+                    lines.push(currentLine.trim());
+                    return lines;
+                }
+
+                while (true) {
+                    textLines = getLines(fontSize);
+                    const totalTextHeight = textLines.length * (fontSize * 1.2);
+                    if (totalTextHeight <= canvasHeight * 0.8 && fontSize > 10) {
+                        break;
+                    }
+                    fontSize -= 5;
+                    if (fontSize < 10) { // 최소 폰트 크기 제한
+                        fontSize = 10;
+                        textLines = getLines(fontSize);
+                        break;
+                    }
+                }
+                
+                // 텍스트 그리기
+                if (isDeathNote) {
+                    ctx.fillStyle = '#cccccc'; // 데스노트 글씨색 (밝은 회색)
+                } else {
+                    ctx.fillStyle = 'white'; // 도덕 퍼즐 글씨색 (흰색)
+                }
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const lineHeight = fontSize * 1.2;
+                const totalTextHeight = textLines.length * lineHeight;
+                const startY = (canvasHeight - totalTextHeight) / 2 + lineHeight / 2;
+                
+                for (let i = 0; i < textLines.length; i++) {
+                    ctx.fillText(textLines[i], canvasWidth / 2, startY + i * lineHeight);
+                }
+
+                // 절취선 그리기: 조각 수에 맞춰 행과 열을 계산
+                const cols = Math.ceil(Math.sqrt(pieceCount));
+                const rows = Math.ceil(pieceCount / cols);
+                const pieceWidth = canvasWidth / cols;
+                const pieceHeight = canvasHeight / rows;
+
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([10, 5]); // 점선 스타일 설정
+
+                // 가로 절취선
+                for (let i = 1; i < rows; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * pieceHeight);
+                    ctx.lineTo(canvasWidth, i * pieceHeight);
+                    ctx.stroke();
+                }
+
+                // 세로 절취선
+                for (let i = 1; i < cols; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * pieceWidth, 0);
+                    ctx.lineTo(i * pieceWidth, canvasHeight);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]); // 라인 스타일 초기화
+            }
+
+            // 퍼즐 이미지들을 생성하는 핵심 함수
+            function generateAllPuzzles() {
+                const moralText = puzzleTextEl.value.trim();
+                const deathNoteText = deathNoteTextEl.value.trim();
+                const pieceCount = parseInt(pieceCountEl.value, 10);
+
+                if (moralText === "") {
+                    showModal('도덕 퍼즐 문구를 입력해주세요.');
+                    return;
+                }
+                if (deathNoteText === "") {
+                    showModal('데스노트 뒷면 문구를 입력해주세요.');
+                    return;
+                }
+                if (isNaN(pieceCount) || pieceCount < 4 || pieceCount > 64) {
+                    showModal('조각 수는 4에서 64 사이의 값으로 입력해주세요.');
+                    return;
+                }
+
+                moralPuzzleImageEl.style.display = 'none';
+                deathNoteImageEl.style.display = 'none';
+
+                drawPuzzleContent(moralCanvas, moralCtx, moralText, pieceCount, false);
+                drawPuzzleContent(deathNoteCanvas, deathNoteCtx, deathNoteText, pieceCount, true);
+
+                moralPuzzleImageEl.src = moralCanvas.toDataURL();
+                moralPuzzleImageEl.style.display = 'block';
+
+                deathNoteImageEl.src = deathNoteCanvas.toDataURL();
+                deathNoteImageEl.style.display = 'block';
+            }
+            
+            // 인쇄 미리보기를 보여주는 함수
+            function showPrintPreview() {
+                // 인쇄를 위해 캔버스를 인쇄 영역으로 이동
+                printArea.innerHTML = ''; // 기존 내용을 비움
+                
+                // 첫 번째 페이지 (도덕 퍼즐)
+                moralCanvas.classList.add('print-canvas');
+                printArea.appendChild(moralCanvas);
+
+                // 두 번째 페이지 (데스노트)
+                deathNoteCanvas.classList.add('print-canvas');
+                printArea.appendChild(deathNoteCanvas);
+
+
+                // 본문 숨기기
+                document.getElementById('app').style.display = 'none';
+                printArea.style.display = 'block'; // 인쇄 영역 표시
+
+                window.print();
+                
+                // 인쇄창이 닫힌 후 원래 화면으로 복귀
+                setTimeout(() => {
+                    moralCanvas.classList.remove('print-canvas');
+                    deathNoteCanvas.classList.remove('print-canvas');
+                    
+                    // 캔버스를 다시 원래 위치로 이동 (미리보기 용)
+                    document.getElementById('moralPuzzleContainer').appendChild(moralCanvas);
+                    document.getElementById('deathNoteContainer').appendChild(deathNoteCanvas);
+
+                    document.getElementById('app').style.display = 'block';
+                    printArea.style.display = 'none'; // 인쇄 영역 숨기기
+                }, 500); // 인쇄 대화 상자가 나타나는 시간을 고려하여 지연
+            }
+
+            window.showModal = showModal;
+
+            generateBtn.addEventListener('click', generateAllPuzzles);
+            printBtn.addEventListener('click', showPrintPreview);
+
+            // 페이지 로드 시 초기 퍼즐 생성
+            generateAllPuzzles();
+        };
+    </script>
+</body>
+</html>

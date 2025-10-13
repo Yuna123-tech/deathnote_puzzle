@@ -110,7 +110,7 @@
         window.onload = function() {
             const generateBtn = document.getElementById('generateBtn');
             const printBtn = document.getElementById('printBtn');
-            const moralTextEl = document.getElementById('moralText'); // ID 변경
+            const moralTextEl = document.getElementById('moralText');
             const deathNoteTextEl = document.getElementById('deathNoteText');
             const pieceCountEl = document.getElementById('pieceCount');
             const moralPuzzleImageEl = document.getElementById('moralPuzzleImage');
@@ -137,8 +137,8 @@
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
             }
 
-            // 텍스트를 캔버스에 그리는 공통 함수 (모든 조각에 글자 포함)
-            function drawPuzzleContent(canvas, ctx, text, pieceCount, isDeathNote = false) {
+            // 텍스트를 퍼즐 조각에 자연스럽게 채워 넣는 핵심 함수
+            function drawPuzzleContent(canvas, ctx, fullText, pieceCount, isDeathNote = false) {
                 const aspect_ratio = 297 / 210; // A4 가로 비율
                 const canvasHeight = 1000;
                 const canvasWidth = canvasHeight * aspect_ratio;
@@ -158,123 +158,152 @@
                 const moralFont = 'Jua, sans-serif'; // 도덕 퍼즐 폰트
                 const deathNoteFont = 'Noto Serif KR, serif'; // 데스노트 폰트 (저작권 무료)
 
-                if (isDeathNote) {
-                    ctx.font = `bold 60px ${deathNoteFont}`; // 데스노트는 굵게
-                    ctx.fillStyle = '#e0e0e0'; // 데스노트 글씨색 (밝은 회색)
-                } else {
-                    ctx.font = `60px ${moralFont}`;
-                    ctx.fillStyle = 'white'; // 도덕 퍼즐 글씨색 (흰색)
-                }
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+                const baseFontSize = 60; // 시작 폰트 크기
 
-                // 텍스트를 글자 단위로 분리 (공백 포함)
-                const characters = Array.from(text).filter(char => char.trim() !== ''); // 빈 문자열 제거
-                const actualPieceCount = pieceCount; // 실제 조각 수
-                const charsPerPiece = Math.max(1, Math.floor(characters.length / actualPieceCount));
-                let charIndex = 0;
-
-                // 절취선 그리기: 조각 수에 맞춰 행과 열을 계산
-                const cols = Math.ceil(Math.sqrt(actualPieceCount));
-                const rows = Math.ceil(actualPieceCount / cols);
+                // 절취선 계산
+                const cols = Math.ceil(Math.sqrt(pieceCount));
+                const rows = Math.ceil(pieceCount / cols);
                 const pieceWidth = canvasWidth / cols;
                 const pieceHeight = canvasHeight / rows;
 
+                // 전체 텍스트를 단어 단위로 분리
+                const words = fullText.split(/\s+/).filter(word => word.length > 0); // 여러 공백과 빈 문자열 처리
+                let wordIndex = 0;
+
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
-                        // 모든 조각에 텍스트가 들어가도록 조정
-                        if (charIndex < characters.length) {
-                            const currentPieceChars = characters.slice(charIndex, charIndex + charsPerPiece);
-                            charIndex += charsPerPiece;
+                        const pieceRect = {
+                            x: c * pieceWidth,
+                            y: r * pieceHeight,
+                            width: pieceWidth,
+                            height: pieceHeight
+                        };
+                        const pieceCenterX = pieceRect.x + pieceRect.width / 2;
+                        const pieceCenterY = pieceRect.y + pieceRect.height / 2;
 
-                            // 남은 글자가 있으면 마지막 조각에 모두 할당
-                            if (r === rows - 1 && c === cols - 1 && charIndex < characters.length) {
-                                currentPieceChars.push(...characters.slice(charIndex));
-                                charIndex = characters.length; // 모든 글자 소진
+                        let currentPieceText = '';
+                        let currentFontSize = baseFontSize;
+
+                        // 이 조각에 할당될 텍스트 덩어리를 찾고, 폰트 크기 조절
+                        // 충분한 글자를 가져와 조각을 채울 수 있도록 시도
+                        // (wordIndex가 words.length를 초과하지 않도록 주의)
+                        let tempWordsForPiece = [];
+                        let tempWordIndex = wordIndex;
+
+                        // 최소 한 단어는 할당
+                        if (tempWordIndex < words.length) {
+                             tempWordsForPiece.push(words[tempWordIndex]);
+                             tempWordIndex++;
+                        }
+
+                        // 조각이 비지 않도록 충분한 텍스트를 채우되, 너무 많이 넘치지 않도록
+                        while(tempWordIndex < words.length && tempWordsForPiece.join(' ').length < fullText.length / pieceCount * 1.5 ) { // 평균 길이의 1.5배까지 허용
+                             tempWordsForPiece.push(words[tempWordIndex]);
+                             tempWordIndex++;
+                        }
+
+                        // 모든 글자가 마지막 조각에 들어가도록 처리
+                        if (r === rows - 1 && c === cols - 1) {
+                            tempWordsForPiece.push(...words.slice(wordIndex + tempWordsForPiece.length));
+                        }
+                        
+                        currentPieceText = tempWordsForPiece.join(' ');
+
+
+                        // 이 조각의 텍스트를 그릴 준비
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        // 텍스트를 조각 내부에 줄바꿈하고 폰트 크기 조절
+                        let testFontSize = baseFontSize + 20; // 더 크게 시작해서 줄임
+                        let lines = [];
+
+                        while (testFontSize >= 10) { // 최소 폰트 크기 10px
+                            if (isDeathNote) {
+                                ctx.font = `bold ${testFontSize}px ${deathNoteFont}`;
+                            } else {
+                                ctx.font = `${testFontSize}px ${moralFont}`;
                             }
-                            
-                            const pieceText = currentPieceChars.join('');
-                            const pieceCenterX = c * pieceWidth + pieceWidth / 2;
-                            const pieceCenterY = r * pieceHeight + pieceHeight / 2;
 
-                            // 텍스트가 조각 안에 다 들어가도록 폰트 크기 동적 조절
-                            let currentFontSize = 60; // 시작 폰트 크기
+                            lines = [];
+                            let currentLine = '';
+                            const maxTextWidth = pieceRect.width * 0.9; // 조각 너비의 90%
+                            const wordsInPiece = currentPieceText.split(' ');
+
+                            for (let i = 0; i < wordsInPiece.length; i++) {
+                                let testLine = currentLine + wordsInPiece[i] + (i === wordsInPiece.length - 1 ? '' : ' ');
+                                if (ctx.measureText(testLine).width > maxTextWidth && currentLine.length > 0) {
+                                    lines.push(currentLine.trim());
+                                    currentLine = wordsInPiece[i] + ' ';
+                                } else {
+                                    currentLine = testLine;
+                                }
+                            }
+                            lines.push(currentLine.trim());
+
+                            const totalLinesHeight = lines.length * (testFontSize * 1.2);
+                            const maxTextHeight = pieceRect.height * 0.9; // 조각 높이의 90%
+
+                            if (totalLinesHeight <= maxTextHeight) {
+                                currentFontSize = testFontSize;
+                                break;
+                            }
+                            testFontSize -= 2; // 폰트 크기 줄임
+                        }
+
+                        // 실제 텍스트 그리기
+                        if (currentPieceText.trim() !== '') { // 빈 문자열이 아닐 경우만 그림
                             if (isDeathNote) {
                                 ctx.font = `bold ${currentFontSize}px ${deathNoteFont}`;
+                                ctx.fillStyle = '#e0e0e0'; // 데스노트 글씨색 (밝은 회색)
+                                ctx.shadowColor = 'rgba(255, 0, 0, 0.7)'; // 붉은 그림자
+                                ctx.shadowBlur = 5;
+                                ctx.shadowOffsetX = 2;
+                                ctx.shadowOffsetY = 2;
                             } else {
                                 ctx.font = `${currentFontSize}px ${moralFont}`;
+                                ctx.fillStyle = 'white'; // 도덕 퍼즐 글씨색 (흰색)
+                                ctx.shadowColor = 'transparent'; // 그림자 제거
+                                ctx.shadowBlur = 0;
+                                ctx.shadowOffsetX = 0;
+                                ctx.shadowOffsetY = 0;
                             }
 
-                            let textWidth = ctx.measureText(pieceText).width;
-                            const maxTextWidth = pieceWidth * 0.9;
-                            const maxTextHeight = pieceHeight * 0.9;
-
-                            while (textWidth > maxTextWidth || (pieceText.split('\n').length * currentFontSize * 1.2) > maxTextHeight) {
-                                currentFontSize -= 1;
-                                if (currentFontSize < 10) { // 최소 폰트 크기
-                                    currentFontSize = 10;
-                                    break;
-                                }
-                                if (isDeathNote) {
-                                    ctx.font = `bold ${currentFontSize}px ${deathNoteFont}`;
-                                } else {
-                                    ctx.font = `${currentFontSize}px ${moralFont}`;
-                                }
-                                textWidth = ctx.measureText(pieceText).width;
-                            }
-
-                            // 텍스트를 여러 줄로 나누어 그리기 (조각 내에서)
-                            let currentLine = '';
-                            let lines = [];
-                            const pieceWords = pieceText.split(' '); // 공백으로 나누어 줄바꿈 시도
-
-                            if (pieceWords.length === 1 && ctx.measureText(pieceWords[0]).width > maxTextWidth) {
-                                // 단일 긴 단어 처리: 강제로 나누기 (임시 방편)
-                                let tempLine = '';
-                                for(let k=0; k<pieceWords[0].length; k++) {
-                                    const char = pieceWords[0][k];
-                                    if (ctx.measureText(tempLine + char).width > maxTextWidth && tempLine.length > 0) {
-                                        lines.push(tempLine);
-                                        tempLine = char;
-                                    } else {
-                                        tempLine += char;
-                                    }
-                                }
-                                lines.push(tempLine);
-                            } else {
-                                for(let k=0; k<pieceWords.length; k++) {
-                                    let testLine = currentLine + pieceWords[k] + ' ';
-                                    if (ctx.measureText(testLine).width > maxTextWidth && currentLine.length > 0) {
-                                        lines.push(currentLine.trim());
-                                        currentLine = pieceWords[k] + ' ';
-                                    } else {
-                                        currentLine = testLine;
-                                    }
-                                }
-                                lines.push(currentLine.trim());
-                            }
-                            
                             const totalLinesHeight = lines.length * (currentFontSize * 1.2);
                             let textY = pieceCenterY - totalLinesHeight / 2 + (currentFontSize * 1.2) / 2;
                             
                             for (let line of lines) {
+                                ctx.fillText(line, pieceCenterX, textY);
+                                textY += currentFontSize * 1.2;
+                            }
+
+                            // 이 조각에 사용된 단어들 업데이트
+                            wordIndex += tempWordsForPiece.length;
+                        } else {
+                             // 글자가 없는 경우, 최소한의 글자라도 할당
+                             if(words.length > 0 && wordIndex < words.length) {
+                                const remainingWords = words.slice(wordIndex);
+                                const singleWord = remainingWords[0];
+                                const singleWordFontSize = Math.min(pieceRect.height * 0.8, baseFontSize); // 적당한 크기
+                                
                                 if (isDeathNote) {
-                                    ctx.font = `bold ${currentFontSize}px ${deathNoteFont}`;
-                                    // 데스노트 특유의 약간 기괴한 느낌을 위해 텍스트 그림자 추가
-                                    ctx.shadowColor = 'rgba(255, 0, 0, 0.7)'; // 붉은 그림자
+                                    ctx.font = `bold ${singleWordFontSize}px ${deathNoteFont}`;
+                                    ctx.fillStyle = '#e0e0e0';
+                                    ctx.shadowColor = 'rgba(255, 0, 0, 0.7)';
                                     ctx.shadowBlur = 5;
                                     ctx.shadowOffsetX = 2;
                                     ctx.shadowOffsetY = 2;
                                 } else {
-                                    ctx.font = `${currentFontSize}px ${moralFont}`;
-                                    ctx.shadowColor = 'transparent'; // 그림자 제거
+                                    ctx.font = `${singleWordFontSize}px ${moralFont}`;
+                                    ctx.fillStyle = 'white';
+                                    ctx.shadowColor = 'transparent';
                                     ctx.shadowBlur = 0;
                                     ctx.shadowOffsetX = 0;
                                     ctx.shadowOffsetY = 0;
                                 }
-                                ctx.fillText(line, pieceCenterX, textY);
-                                textY += currentFontSize * 1.2;
-                            }
+                                ctx.fillText(singleWord, pieceCenterX, pieceCenterY);
+                                wordIndex++;
+                             }
                         }
                     }
                 }
@@ -306,7 +335,7 @@
 
             // 퍼즐 이미지들을 생성하는 핵심 함수
             function generateAllPuzzles() {
-                const moralText = moralTextEl.value.trim(); // ID 변경
+                const moralText = moralTextEl.value.trim();
                 const deathNoteText = deathNoteTextEl.value.trim();
                 const pieceCount = parseInt(pieceCountEl.value, 10);
 
@@ -322,14 +351,16 @@
                     showModal('조각 수는 4에서 64 사이의 값으로 입력해주세요.');
                     return;
                 }
-                if (moralText.length < pieceCount) {
-                    showModal(`도덕 퍼즐 문구는 최소 ${pieceCount}글자 이상이어야 모든 조각에 글자가 들어갑니다.`);
-                    return;
+                // 텍스트 길이가 조각 수보다 너무 짧으면 빈칸이 생길 수 있음을 경고
+                if (moralText.split(/\s+/).filter(w => w.length > 0).length < pieceCount) {
+                    showModal(`도덕 퍼즐 문구는 최소 ${pieceCount}개 이상의 단어(어절)가 필요합니다. 현재 단어 수: ${moralText.split(/\s+/).filter(w => w.length > 0).length}.`);
+                    // 이 경우에도 일단 생성은 하되, 빈 칸이 생길 수 있음을 인지하게 함
                 }
-                if (deathNoteText.length < pieceCount) {
-                    showModal(`데스노트 문구는 최소 ${pieceCount}글자 이상이어야 모든 조각에 글자가 들어갑니다.`);
-                    return;
+                if (deathNoteText.split(/\s+/).filter(w => w.length > 0).length < pieceCount) {
+                    showModal(`데스노트 문구는 최소 ${pieceCount}개 이상의 단어(어절)가 필요합니다. 현재 단어 수: ${deathNoteText.split(/\s+/).filter(w => w.length > 0).length}.`);
+                    // 이 경우에도 일단 생성은 하되, 빈 칸이 생길 수 있음을 인지하게 함
                 }
+
 
                 moralPuzzleImageEl.style.display = 'none';
                 deathNoteImageEl.style.display = 'none';

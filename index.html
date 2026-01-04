@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>도덕 퍼즐 & 데스노트 뒷면</title>
+    <title>앞뒷면 문구가 있는 암호 퍼즐 생성기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,18 +59,18 @@
 
     <!-- 메인 애플리케이션 컨테이너 -->
     <div id="app" class="container mx-auto bg-white p-8 rounded-3xl shadow-2xl space-y-8">
-        <h1 class="text-4xl font-bold text-center text-blue-700">도덕 퍼즐 & 데스노트 뒷면</h1>
-        <p class="text-center text-gray-600">앞면에는 도덕 관련 글귀를, 뒷면에는 데스노트 문구를 넣어 글자가 자연스럽게 잘리는 퍼즐을 만들어 보세요.</p>
+        <h1 class="text-4xl font-bold text-center text-blue-700">앞뒷면 문구가 있는 암호 퍼즐 생성기</h1>
+        <p class="text-center text-gray-600">앞면과 뒷면에 서로 다른 문구를 넣어 글자가 자연스럽게 잘리는 방탈출 수업을 위한 암호 퍼즐을 만들어 보세요.</p>
 
         <!-- 제어 패널 -->
         <div class="no-print bg-gray-50 p-6 rounded-2xl shadow-inner space-y-4">
             <div>
-                <label for="moralText" class="block text-sm font-medium text-gray-700">퍼즐 앞면 문구 (도덕 관련):</label>
+                <label for="moralText" class="block text-sm font-medium text-gray-700">퍼즐 앞면 문구:</label>
                 <textarea id="moralText" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2">친구를 배려하고 존중하는 마음은 진정한 행복으로 가는 길입니다. 우리 모두 서로 돕고 이해하며 아름다운 교실을 만들어가요.</textarea>
             </div>
             <div>
-                <label for="deathNoteText" class="block text-sm font-medium text-gray-700">퍼즐 뒷면 문구 (데스노트 문구):</label>
-                <textarea id="deathNoteText" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2">이 노트에 이름이 적힌 인간은 죽는다. 이 노트는 사신계의 노트이므로, 인간계의 도구에 묶이지 않는다.</textarea>
+                <label for="deathNoteText" class="block text-sm font-medium text-gray-700">퍼즐 뒷면 문구:</label>
+                <textarea id="deathNoteText" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2">앞면에 적힌 문구가 방을 탈출하기 위해 얻어야 하는 암호 문장이다. 완성된 문장을 선생님께 알리시오.</textarea>
             </div>
             <div>
                 <label for="pieceCount" class="block text-sm font-medium text-gray-700">조각 수 (최소 4, 최대 64):</label>
@@ -78,13 +78,13 @@
             </div>
             <div class="flex justify-center space-x-4">
                 <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">퍼즐 생성 및 미리보기</button>
-                <button id="printBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">인쇄하기 (앞/뒷면)</button>
+                <button id="printBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">인쇄하기</button>
             </div>
         </div>
         
         <!-- 완성된 퍼즐 미리보기 (앞면) -->
         <div id="moralPuzzleContainer" class="mt-8 border-t pt-8">
-            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">퍼즐 앞면 미리보기 (도덕 글귀)</h2>
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">퍼즐 앞면 미리보기</h2>
             <div class="flex justify-center">
                 <img id="moralPuzzleImage" src="" alt="도덕 퍼즐 그림" class="rounded-lg shadow-xl" style="display: none;">
             </div>
@@ -92,7 +92,7 @@
 
         <!-- 완성된 퍼즐 미리보기 (뒷면) -->
         <div id="deathNoteContainer" class="mt-8 border-t pt-8">
-            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">퍼즐 뒷면 미리보기 (데스노트 문구)</h2>
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">퍼즐 뒷면 미리보기</h2>
             <div class="flex justify-center">
                 <img id="deathNoteImage" src="" alt="데스노트 그림" class="rounded-lg shadow-xl" style="display: none;">
             </div>
@@ -265,11 +265,11 @@
                 const pieceCount = parseInt(pieceCountEl.value, 10);
 
                 if (moralText === "") {
-                    showModal('도덕 퍼즐 문구를 입력해주세요.');
+                    showModal('앞면 문구를 입력해주세요.');
                     return;
                 }
                 if (deathNoteText === "") {
-                    showModal('데스노트 뒷면 문구를 입력해주세요.');
+                    showModal('뒷면 문구를 입력해주세요.');
                     return;
                 }
                 if (isNaN(pieceCount) || pieceCount < 4 || pieceCount > 64) {
@@ -279,10 +279,10 @@
                 // 이제는 글자 수가 적어도 빈 칸이 생기지 않으므로, 경고를 제거하거나 완화
                 // 대신, 텍스트가 너무 짧으면 그림이 너무 커 보일 수 있음을 알릴 수 있음
                 if (moralText.length < 10 && pieceCount > 10) { // 예시: 10글자 미만인데 조각이 많을 경우
-                     showModal('도덕 퍼즐 문구가 너무 짧아 퍼즐 조각의 내용이 적을 수 있습니다.');
+                     showModal('앞면 문구가 너무 짧아 퍼즐 조각의 내용이 적을 수 있습니다.');
                 }
                 if (deathNoteText.length < 10 && pieceCount > 10) {
-                     showModal('데스노트 문구가 너무 짧아 퍼즐 조각의 내용이 적을 수 있습니다.');
+                     showModal('뒷면 문구가 너무 짧아 퍼즐 조각의 내용이 적을 수 있습니다.');
                 }
 
 
